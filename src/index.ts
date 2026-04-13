@@ -69,7 +69,7 @@ app.post('/api/courts', async (req: Request, res: Response) => {
   }
 });
 
-// 4. Obtener Canchas Cercanas (Adaptado de Vercel)
+// 4. Obtener Canchas Cercanas
 app.get('/api/courts/nearby', async (req: Request, res: Response) => {
   const lat = parseFloat(req.query.lat as string);
   const lng = parseFloat(req.query.lng as string);
@@ -98,6 +98,42 @@ app.get('/api/courts/nearby', async (req: Request, res: Response) => {
     `;
 
     const result = await pool.query(query, [lng, lat]);
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// 5. Crear una Reserva
+app.post('/api/bookings', async (req: Request, res: Response) => {
+  const { courtId, userId, bookingDate } = req.body;
+  try {
+    const query = `
+      INSERT INTO bookings (court_id, user_id, booking_date)
+      VALUES ($1, $2, $3)
+      RETURNING *;
+    `;
+    const result = await pool.query(query, [courtId, userId, bookingDate]);
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// 6. Obtener Reservas de un Usuario
+app.get('/api/bookings/user/:userId', async (req: Request, res: Response) => {
+  const { userId } = req.params;
+  try {
+    const query = `
+      SELECT b.*, c.name as court_name, c.type as court_type
+      FROM bookings b
+      JOIN courts c ON b.court_id = c.id
+      WHERE b.user_id = $1
+      ORDER BY b.booking_date DESC;
+    `;
+    const result = await pool.query(query, [userId]);
     res.json(result.rows);
   } catch (err) {
     console.error(err);
